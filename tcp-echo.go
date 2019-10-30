@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
-
-	"fmt"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/nu7hatch/gouuid"
 )
@@ -54,6 +56,16 @@ func main() {
 	log.Println("Listening on TCP port", tcpPort)
 	defer l.Close()
 
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigs
+		fmt.Println()
+		fmt.Println(sig)
+		select {}
+	}()
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -84,6 +96,8 @@ func handleTCPRequest(conn net.Conn, message string) {
 
 		log.Println(clientId+" - Received Raw Data:", data)
 		log.Printf(clientId+" - Received Data (converted to string): %s", data)
+
+		data = []byte(string(data) + " " + fmt.Sprintf("%s\n", time.Now()))
 		conn.Write(data)
 	}
 }
